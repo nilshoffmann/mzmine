@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004-2024 The MZmine Development Team
+ * Copyright (c) 2004-2024 The mzmine Development Team
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -27,14 +27,15 @@ package io.github.mzmine.javafx.components.factories;
 
 import com.google.common.collect.Range;
 import java.text.NumberFormat;
+import java.util.Arrays;
 import java.util.function.Function;
 import java.util.logging.Logger;
-import javafx.beans.binding.DoubleExpression;
 import javafx.beans.value.ObservableValue;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Options to manipulate table views and maybe treetableviews
@@ -46,25 +47,7 @@ public class TableColumns {
   private static final Logger logger = Logger.getLogger(TableColumns.class.getName());
 
   public static void autoFitLastColumn(TableView<?> table) {
-    autoFitLastColumn(table, table.widthProperty().subtract(10));
-  }
-
-  public static void autoFitLastColumn(TableView<?> table, DoubleExpression tableWidth) {
-    var cols = table.getColumns();
-    if (cols.isEmpty()) {
-      throw new IllegalArgumentException("Table must contain 1 or more columns");
-    }
-    // target column to resize
-    TableColumn<?, ?> lastCol = cols.getLast();
-    // subtract all widths from the table width
-    DoubleExpression remainingWidth = tableWidth;
-    for (int i = 0; i < cols.size() - 1; i++) {
-      var col = cols.get(i);
-      if (col != lastCol) {
-        remainingWidth = remainingWidth.subtract(col.widthProperty());
-      }
-    }
-    lastCol.prefWidthProperty().bind(remainingWidth);
+    table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
   }
 
   /**
@@ -141,12 +124,11 @@ public class TableColumns {
   }
 
   /**
-   *
-   * @param name column name
+   * @param name         column name
    * @param valueFactory defines the value of the cell
+   * @param <MODEL>      the table row data model
+   * @param <V>          the value type of the property
    * @return a new TableColumn
-   * @param <MODEL> the table row data model
-   * @param <V> the value type of the property
    */
   @NotNull
   public static <MODEL, V> TableColumn<MODEL, V> createColumn(@NotNull String name, double minWidth,
@@ -157,12 +139,32 @@ public class TableColumns {
   }
 
   /**
-   *
-   * @param name column name
+   * @param name         column name
    * @param valueFactory defines the value of the cell
+   * @param alignment    the column alignment. uses the default if null.
+   * @param <MODEL>      the table row data model
+   * @param <V>          the value type of the property
    * @return a new TableColumn
-   * @param <MODEL> the table row data model
-   * @param <V> the value type of the property
+   */
+  @NotNull
+  public static <MODEL, V extends Number> TableColumn<MODEL, V> createColumn(@NotNull String name,
+      double minWidth, NumberFormat format, @Nullable ColumnAlignment alignment,
+      @NotNull Function<MODEL, ObservableValue<V>> valueFactory) {
+    var column = createColumn(name, valueFactory);
+    column.setMinWidth(minWidth);
+    setFormattedCellFactory(column, format);
+    if (alignment != null) {
+      setAlignment(alignment, column);
+    }
+    return column;
+  }
+
+  /**
+   * @param name         column name
+   * @param valueFactory defines the value of the cell
+   * @param <MODEL>      the table row data model
+   * @param <V>          the value type of the property
+   * @return a new TableColumn
    */
   @NotNull
   public static <MODEL, V> TableColumn<MODEL, V> createColumn(@NotNull String name, double minWidth,
@@ -172,4 +174,48 @@ public class TableColumns {
     return column;
   }
 
+  /**
+   * @param name         column name
+   * @param valueFactory defines the value of the cell
+   * @param alignment    the column alignment. uses the default if null.
+   * @param <MODEL>      the table row data model
+   * @param <V>          the value type of the property
+   * @return a new TableColumn
+   */
+  @NotNull
+  public static <MODEL, V extends Number> TableColumn<MODEL, V> createColumn(@NotNull String name,
+      double minWidth, double maxWidth, NumberFormat format, @Nullable ColumnAlignment alignment,
+      @NotNull Function<MODEL, ObservableValue<V>> valueFactory) {
+    var column = createColumn(name, minWidth, valueFactory);
+    column.setMaxWidth(maxWidth);
+    setFormattedCellFactory(column, format);
+    if (alignment != null) {
+      setAlignment(alignment, column);
+    }
+    return column;
+  }
+
+  public static <MODEL, V> TableColumn<MODEL, V> setAlignment(ColumnAlignment alignment,
+      TableColumn<MODEL, V> column) {
+    alignment.setToColumn(column);
+    return column;
+  }
+
+  public enum ColumnAlignment {
+    LEFT, CENTER, RIGHT;
+
+    public void setToColumn(TableColumn<?, ?> column) {
+      column.getStyleClass().removeIf(styleClass -> Arrays.stream(ColumnAlignment.values())
+          .anyMatch(align -> align.getStyleClass().equals(styleClass)));
+      column.getStyleClass().add(getStyleClass());
+    }
+
+    String getStyleClass() {
+      return switch (this) {
+        case RIGHT -> "align-right-column";
+        case LEFT -> "align-left-column";
+        case CENTER -> "align-center-column";
+      };
+    }
+  }
 }

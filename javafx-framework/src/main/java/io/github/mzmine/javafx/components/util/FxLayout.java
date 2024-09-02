@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2004-2024 The MZmine Development Team
+ * Copyright (c) 2004-2024 The mzmine Development Team
  *
  * Permission is hereby granted, free of charge, to any person
  * obtaining a copy of this software and associated documentation
@@ -41,6 +41,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import org.controlsfx.tools.Borders;
+import org.jetbrains.annotations.NotNull;
 
 public class FxLayout {
 
@@ -93,9 +94,14 @@ public class FxLayout {
   }
 
   public static VBox newVBox(Pos alignment, Insets padding, Node... children) {
+    return newVBox(alignment, padding, false, children);
+  }
+
+  public static VBox newVBox(Pos alignment, Insets padding, boolean fillWidth, Node... children) {
     var pane = new VBox(DEFAULT_SPACE, children);
     pane.setPadding(padding);
     pane.setAlignment(alignment);
+    pane.setFillWidth(fillWidth);
     return pane;
   }
 
@@ -163,11 +169,24 @@ public class FxLayout {
     return new TitledPane(title, node);
   }
 
-  public static Accordion newAccordion(boolean expandFirst, TitledPane... contents) {
-    final Accordion accordion = new Accordion(contents);
-    if (expandFirst && contents.length > 0) {
-      accordion.setExpandedPane(contents[0]);
+  public static Accordion newAccordion(TitledPane... panes) {
+    return new Accordion(panes);
+  }
+
+  public static Accordion newAccordion(TitledPane expandedPane, @NotNull TitledPane... panes) {
+    final Accordion accordion = newAccordion(panes);
+    if(!accordion.getPanes().contains(expandedPane)) {
+      accordion.getPanes().add(expandedPane);
     }
+    accordion.setExpandedPane(expandedPane);
     return accordion;
+  }
+
+  public static Accordion newAccordion(boolean expandFirst, TitledPane... panes) {
+    if(expandFirst && panes.length > 0) {
+      var first = panes[0];
+      return newAccordion(first, panes);
+    }
+    return newAccordion(panes);
   }
 }
